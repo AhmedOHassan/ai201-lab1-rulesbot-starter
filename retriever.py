@@ -68,5 +68,26 @@ def retrieve(query, n_results=N_RESULTS):
     if _collection.count() == 0:
         return []
 
-    # Your implementation here.
-    return []
+    results = _collection.query(
+        query_texts=[query],
+        n_results=n_results,
+        include=["documents", "metadatas", "distances"],
+    )
+
+    # query() nests one list per query_text; we sent a single query, so the
+    # actual results live at index [0]. Walk the three parallel lists together.
+    documents = results["documents"][0]
+    metadatas = results["metadatas"][0]
+    distances = results["distances"][0]
+
+    chunks = [
+        {"text": text, "game": metadata["game"], "distance": distance}
+        for text, metadata, distance in zip(documents, metadatas, distances)
+    ]
+
+    # TEMP: verify retrieval in the terminal before testing in the UI. Remove
+    # this loop once you've confirmed results look healthy.
+    # for chunk in chunks:
+    #     print(f"[{chunk['game']}] (dist: {chunk['distance']:.3f}) {chunk['text'][:80]}...")
+
+    return chunks

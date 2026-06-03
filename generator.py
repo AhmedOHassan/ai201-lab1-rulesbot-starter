@@ -35,5 +35,37 @@ def generate_response(query, retrieved_chunks):
             "Try rephrasing your question — or check that your ingestion pipeline is working."
         )
 
-    # Your implementation here.
-    return "⚙️ Response generation not yet implemented. Complete Milestone 3 to activate answers."
+    # Format each chunk as a [game]-labeled block, separated by a delimiter.
+    # Game labels stay in (so the model can cite the source); distance stays out.
+    context = "\n\n---\n\n".join(
+        f"[{chunk['game']}]\n{chunk['text']}" for chunk in retrieved_chunks
+    )
+
+    # System message holds the stable behavioral rules: persona + grounding +
+    # citation. The grounding clause is what keeps answers honest.
+    system_prompt = (
+        "You are a board game rules assistant. Answer the question using ONLY "
+        "the rules in the provided context. Do not use any outside knowledge of "
+        "these or any other board games. If the context does not contain the "
+        "answer, say you cannot find it in the loaded rules — do not guess, "
+        "infer, or fill in gaps.\n\n"
+        "State which game your answer comes from, using the bracketed game "
+        "labels in the context (e.g. [Catan]). If your answer draws on more than "
+        "one game, name each game it applies to."
+    )
+
+    # User message holds the per-request payload: the context block + the query.
+    user_message = (
+        f"Context:\n{context}\n\n"
+        f"Question: {query}"
+    )
+
+    response = _client.chat.completions.create(
+        model=LLM_MODEL,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message},
+        ],
+    )
+
+    return response.choices[0].message.content
